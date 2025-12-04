@@ -1,0 +1,7 @@
+"devDependencies": {
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "vite": "^5.2.0"
+    // ... ensure the versions are recent
+}
