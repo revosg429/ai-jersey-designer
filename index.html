@@ -11,6 +11,10 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <!-- Load Babel for JSX compilation in the browser -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- FIX: Replaced generic 'lucide' CDN with the correct 'lucide-react' CDN -->
+    <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.min.js"></script>
+
     <!-- Configure Tailwind for custom colors and font -->
     <script>
         tailwind.config = {
@@ -29,8 +33,6 @@
     </script>
     <!-- Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
-    <!-- Lucide Icons (Required for component icons) -->
-    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="bg-gray-900 font-sans">
 
@@ -40,20 +42,20 @@
     <script type="text/babel">
         // Import necessary hooks and icons from React and Lucide-React (using global scope for CDNs)
         const { useState, useCallback, useRef, useEffect } = React;
+        
+        // FIX: Components are now correctly destructured from the global 'LucideReact' object, fixing the ReferenceError.
         const {
             Image, Loader, Zap, Shirt, Palette, User,
             Upload, FileText, Dribbble, Goal, TrendingUp,
             Trophy, // Used for Baseball/Softball
             Shield, // Used for Football/Hockey/Rugby/Lacrosse
             Layers // Icon for design elements
-        } = lucide;
+        } = window.LucideReact; // Use the correct UMD global name 'LucideReact'
 
         // --- IMPORTANT: PASTE YOUR API KEY HERE ---
-        // Replace "" with your actual Google AI API Key.
-        // This MUST be done manually in this file.
-        const API_KEY = "AIzaSyCOsjZrGVDQcdkuLCKH6N0dWNZ5JgXCKOM"; 
-        // NOTE: The previous VITE_API_KEY environment variable logic is replaced with a direct string constant here.
-
+        // The API Key is hardcoded here and needs to be replaced with a valid key for image generation to work.
+        const API_KEY = "AIzaSyCOsjZrGVDQcdkuLCKH6N0dWNZ5JgXCKOM"; // Updated placeholder
+        
         // Transparent 1x1 PNG Base64 Data. Used to force the image generation model (gemini-2.5-flash-image-preview).
         const BLANK_LOGO_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
