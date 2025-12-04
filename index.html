@@ -12,7 +12,7 @@
     <!-- Load Babel for JSX compilation in the browser -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- FIX: Replaced generic 'lucide' CDN with the correct 'lucide-react' CDN -->
+    <!-- FIX: Lucide-React CDN -->
     <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.min.js"></script>
 
     <!-- Configure Tailwind for custom colors and font -->
@@ -40,40 +40,58 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // Import necessary hooks and icons from React and Lucide-React (using global scope for CDNs)
+        // Import necessary hooks from React
         const { useState, useCallback, useRef, useEffect } = React;
         
-        // FIX: Components are now correctly destructured from the global 'LucideReact' object, fixing the ReferenceError.
+        // FIX: Robustly access icons from the global LucideReact object, 
+        // using an empty object as a fallback to prevent runtime errors if the CDN loads late.
+        const LucideComponents = window.LucideReact || {};
+
         const {
             Image, Loader, Zap, Shirt, Palette, User,
             Upload, FileText, Dribbble, Goal, TrendingUp,
-            Trophy, // Used for Baseball/Softball
-            Shield, // Used for Football/Hockey/Rugby/Lacrosse
-            Layers // Icon for design elements
-        } = window.LucideReact; // Use the correct UMD global name 'LucideReact'
+            Trophy, Shield, Layers
+        } = LucideComponents;
+
+        // Ensure all icons exist, providing a placeholder component if they don't (to prevent JSX errors)
+        const SafeIcon = (Component) => Component || (() => <div className="w-4 h-4 bg-gray-500 rounded-sm" />);
+
+        const SafeImage = SafeIcon(Image);
+        const SafeLoader = SafeIcon(Loader);
+        const SafeZap = SafeIcon(Zap);
+        const SafeShirt = SafeIcon(Shirt);
+        const SafePalette = SafeIcon(Palette);
+        const SafeUser = SafeIcon(User);
+        const SafeUpload = SafeIcon(Upload);
+        const SafeFileText = SafeIcon(FileText);
+        const SafeDribbble = SafeIcon(Dribbble);
+        const SafeGoal = SafeIcon(Goal);
+        const SafeTrendingUp = SafeIcon(TrendingUp);
+        const SafeTrophy = SafeIcon(Trophy);
+        const SafeShield = SafeIcon(Shield);
+        const SafeLayers = SafeIcon(Layers);
 
         // --- IMPORTANT: PASTE YOUR API KEY HERE ---
-        // The API Key is hardcoded here and needs to be replaced with a valid key for image generation to work.
-        const API_KEY = "AIzaSyCOsjZrGVDQcdkuLCKH6N0dWNZ5JgXCKOM"; // Updated placeholder
+        const API_KEY = "AIzaSyCOsjZrGVDQcdkuLCKH6N0dWNZ5JgXCKOM"; 
         
         // Transparent 1x1 PNG Base64 Data. Used to force the image generation model (gemini-2.5-flash-image-preview).
         const BLANK_LOGO_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
         // List of available sports jersey types, sorted alphabetically
         const JERSEY_TYPES = [
-            { value: 'baseball', label: 'Baseball', icon: Trophy },
-            { value: 'basketball', label: 'Basketball', icon: Dribbble },
-            { value: 'cycling', label: 'Cycling', icon: TrendingUp },
-            { value: 'field_hockey', label: 'Field Hockey', icon: Goal },
-            { value: 'football', label: 'Football', icon: Shield },
-            { value: 'hockey', label: 'Hockey', icon: Shield },
-            { value: 'lacrosse', label: 'Lacrosse', icon: Shield },
-            { value: 'rugby', label: 'Rugby', icon: Shield },
-            { value: 'soccer', label: 'Soccer', icon: Goal },
-            { value: 'softball', label: 'Softball', icon: Trophy },
-            { value: 'track_and_field', label: 'Track & Field', icon: TrendingUp },
-            { value: 'volleyball', label: 'Volleyball', icon: Dribbble },
-            { value: 'wrestling', label: 'Wrestling', icon: User },
+            { value: 'baseball', label: 'Baseball', icon: SafeTrophy },
+            { value: 'basketball', label: 'Basketball', icon: SafeDribbble },
+            { value: 'cycling', label: 'Cycling', icon: SafeTrendingUp },
+            { value: 'field_hockey', label: 'Field Hockey', icon: SafeGoal },
+            { value: 'football', label: 'Football', icon: SafeShield },
+            { value: 'hockey', label: 'Hockey', icon: SafeShield },
+            { value: 'lacrosse', label: 'Lacrosse', icon: SafeShield },
+            { value: 'rugby', label: 'Rugby', icon: SafeShield },
+            { value: 'soccer', label: 'Soccer', icon: SafeGoal },
+            { value: 'softball', label: 'Softball', icon: SafeTrophy },
+            { value: 'track_and_field', label: 'Track & Field', icon: SafeTrendingUp },
+            { value: 'volleyball', label: 'Volleyball', icon: SafeDribbble },
+            { value: 'wrestling', label: 'Wrestling', icon: SafeUser },
         ];
 
         /**
@@ -119,7 +137,7 @@
         const ColorPickerGroup = ({ label, value, onChange, color }) => (
             <div className="flex flex-col space-y-2">
                 <label className="text-sm font-medium text-gray-300 flex items-center">
-                    <Palette className={`w-4 h-4 mr-2 ${color}`} />
+                    <SafePalette className={`w-4 h-4 mr-2 ${color}`} />
                     {label}
                 </label>
                 <div className="flex items-center space-x-3">
@@ -338,13 +356,13 @@
 
             // Find the current icon based on the selected jersey type
             const currentJerseyType = JERSEY_TYPES.find(t => t.value === jerseyType);
-            const IconComponent = currentJerseyType?.icon || Shirt;
+            const IconComponent = currentJerseyType?.icon || SafeShirt;
 
 
             return (
                 <div className="min-h-screen bg-gray-900 text-gray-200 p-4 sm:p-8 font-sans">
                     <h1 className="text-4xl font-extrabold text-center mb-12 flex items-center justify-center text-white">
-                        <Image className="w-9 h-9 mr-3 text-purple-400" />
+                        <SafeImage className="w-9 h-9 mr-3 text-purple-400" />
                         AI Team Jersey Customizer
                     </h1>
 
@@ -360,7 +378,7 @@
                         {/* Left Side: Customization Controls */}
                         <div className="lg:w-1/3 bg-gray-800 p-6 rounded-2xl shadow-2xl h-fit">
                             <h2 className="text-2xl font-semibold mb-6 border-b pb-2 border-gray-700 text-white flex items-center">
-                                <Palette className="w-5 h-5 mr-2 text-blue-400" />
+                                <SafePalette className="w-5 h-5 mr-2 text-blue-400" />
                                 Customization Controls
                             </h2>
                             
@@ -369,7 +387,7 @@
                                 {/* 1. Jersey Type */}
                                 <div className="flex flex-col space-y-2">
                                     <label className="text-sm font-medium text-gray-300 flex items-center">
-                                        <Shirt className="w-4 h-4 mr-2 text-yellow-400" />
+                                        <SafeShirt className="w-4 h-4 mr-2 text-yellow-400" />
                                         Jersey Type
                                     </label>
                                     <select
@@ -386,7 +404,7 @@
                                 {/* 2. Team Name */}
                                 <InputGroup 
                                     label="Team Name/Text (Max 15 Chars)"
-                                    icon={User}
+                                    icon={SafeUser}
                                     value={teamName}
                                     onChange={(e) => setTeamName(e.target.value.toUpperCase().slice(0, 15))}
                                     placeholder="e.g., WARRIORS"
@@ -420,7 +438,7 @@
                                 {/* Specific Design Elements */}
                                 <div className="flex flex-col space-y-2">
                                     <label className="text-sm font-medium text-gray-300 flex items-center">
-                                        <Layers className="w-4 h-4 mr-2 text-cyan-400" />
+                                        <SafeLayers className="w-4 h-4 mr-2 text-cyan-400" />
                                         Design Patterns & Elements (e.g., Stripes, Gradient)
                                     </label>
                                     <textarea
@@ -438,7 +456,7 @@
                                 {/* 6. Logo Upload & Description */}
                                 <div className="flex flex-col space-y-2">
                                     <label className="text-sm font-medium text-gray-300 flex items-center">
-                                        <Upload className="w-4 h-4 mr-2 text-purple-400" />
+                                        <SafeUpload className="w-4 h-4 mr-2 text-purple-400" />
                                         Logo File Upload
                                     </label>
                                     <input
@@ -474,7 +492,7 @@
                                     )}
 
                                     <label className="text-sm font-medium text-gray-300 flex items-center pt-4">
-                                        <FileText className="w-4 h-4 mr-2 text-purple-400" />
+                                        <SafeFileText className="w-4 h-4 mr-2 text-purple-400" />
                                         Logo Placement Description (For AI Rendering)
                                     </label>
                                     <textarea
@@ -497,12 +515,12 @@
                                 >
                                     {isLoading ? (
                                         <>
-                                            <Loader className="animate-spin w-5 h-5 mr-3" />
+                                            <SafeLoader className="animate-spin w-5 h-5 mr-3" />
                                             Rendering Mockup...
                                         </>
                                     ) : (
                                         <>
-                                            <Zap className="w-5 h-5 mr-2" />
+                                            <SafeZap className="w-5 h-5 mr-2" />
                                             Generate High-Quality Mockup
                                         </>
                                     )}
@@ -524,7 +542,7 @@
                                 )}
                                 {isLoading && (
                                     <div className="flex flex-col items-center justify-center text-purple-400">
-                                        <Loader className="animate-spin w-16 h-16 mb-4" />
+                                        <SafeLoader className="animate-spin w-16 h-16 mb-4" />
                                         <p className="text-lg font-medium">AI is generating your custom jersey...</p>
                                     </div>
                                 )}
@@ -537,7 +555,7 @@
                                 )}
                                 {!imageUrl && !isLoading && !error && (
                                     <div className="text-gray-500 dark:text-gray-400 text-center p-6">
-                                        <Image className="w-16 h-16 mx-auto mb-3" />
+                                        <SafeImage className="w-16 h-16 mx-auto mb-3" />
                                         <p>Customize your design and click 'Generate High-Quality Mockup' to see the result here.</p>
                                     </div>
                                 )}
