@@ -9,7 +9,7 @@ import {
 
 // === IMPORTANT: PASTE YOUR API KEY HERE ===
 // This key must be present for the image generation to work.
-const API_KEY = "AIzaSyDs9X-Gyo9YFGvMIswOz18kkyfw4e6fLtA"; 
+const API_KEY = import.meta.env.VITE_API_KEY || "";
 
 // **FIX:** Transparent 1x1 PNG Base64 Data. This forces the use of the better multimodal model.
 const BLANK_LOGO_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';

@@ -21,7 +21,12 @@ a {
 a:hover {
   color: #535bf2;
 }
-
+export default {
+plugins: {
+tailwindcss: {},
+autoprefixer: {},
+},
+}
 body {
   margin: 0;
   display: flex;
