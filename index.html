@@ -8,14 +8,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Load React and ReactDOM via CDN -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react.development.js"></script>
     <!-- Load Babel for JSX compilation in the browser -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- NOTE: The problematic lucide-react CDN has been removed to fix the Type Error. 
-         Icons are now defined using inline SVGs below for stability. -->
-
-    <!-- Configure Tailwind for custom colors and font -->
     <script>
         tailwind.config = {
             theme: {
@@ -31,7 +27,6 @@
             }
         }
     </script>
-    <!-- Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
 </head>
 <body class="bg-gray-900 font-sans">
@@ -43,9 +38,7 @@
         // Import necessary hooks from React
         const { useState, useCallback, useRef, useEffect } = React;
         
-        // --- INLINE SVG ICON DEFINITIONS (Replaces lucide-react CDN for stability) ---
-        // These components return SVGs and are styled using Tailwind classes passed via props.
-        const IconFallback = (props) => <span {...props} className={props.className || "w-4 h-4 bg-gray-500 rounded-sm"} />;
+        // --- INLINE SVG ICON DEFINITIONS ---
         const Image = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>;
         const Loader = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-9-9 9 9 0 0 1 9-9"></path><line x1="12" x2="12" y1="2" y2="6"></line><line x1="12" x2="12" y1="18" y2="22"></line><line x1="4.22" x2="6.6" y1="4.22" y2="6.6"></line><line x1="17.39" x2="19.78" y1="17.39" y2="19.78"></line><line x1="2" x2="6" y1="12" y2="12"></line><line x1="18" x2="22" y1="12" y2="12"></line><line x1="4.22" x2="6.6" y1="19.78" y2="17.39"></line><line x1="17.39" x2="19.78" y1="6.6" y2="4.22"></line></svg>;
         const Zap = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>;
@@ -60,15 +53,11 @@
         const Trophy = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 9a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h0a2 2 0 0 1-2-2V9z"/><path d="M12 20a5 5 0 0 0 5-5H7a5 5 0 0 0 5 5z"/><path d="M16 11V5l4-2"/><path d="M8 11V5L4 3"/></svg>;
         const Shield = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-12V5l-8-3-8 3v5c0 8 8 12 8 12z"/></svg>;
         const Layers = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19c-3.3 0-6-1.3-6-3s2.7-3 6-3 6 1.3 6 3-2.7 3-6 3z"/><path d="M12 16c-3.3 0-6-1.3-6-3s2.7-3 6-3 6 1.3 6 3-2.7 3-6 3z"/><path d="M12 13c-3.3 0-6-1.3-6-3s2.7-3 6-3 6 1.3 6 3-2.7 3-6 3z"/></svg>;
-
-
-        // --- IMPORTANT: PASTE YOUR API KEY HERE ---
-        const API_KEY = "AIzaSyB7FHy6qq42M-i2pUDuvlbOQenzXKsEMZo"; 
         
-        // Transparent 1x1 PNG Base64 Data. Used to force the image generation model (gemini-2.5-flash-image-preview).
+        // Transparent 1x1 PNG Base64 Data. 
         const BLANK_LOGO_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
-        // List of available sports jersey types, sorted alphabetically
+        // List of available sports jersey types
         const JERSEY_TYPES = [
             { value: 'baseball', label: 'Baseball', icon: Trophy },
             { value: 'basketball', label: 'Basketball', icon: Dribbble },
@@ -95,7 +84,6 @@
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
                 reader.onload = () => {
-                    // Remove the 'data:image/png;base64,' prefix before resolving
                     const base64Data = reader.result.split(',')[1];
                     if (!base64Data) {
                         reject(new Error("Failed to extract Base64 data from file."));
@@ -170,9 +158,8 @@
             const [isLoading, setIsLoading] = useState(false);
             const [error, setError] = useState(null);
             
-            // Check if the API key is provided and not the placeholder
-            const apiKeyProvided = API_KEY && API_KEY.length > 5 && API_KEY !== 'undefined';
-
+            // NOTE: API_KEY is now handled by the backend proxy server.
+            const apiKeyProvided = true; // Assume proxy is configured
 
             // Cleanup object URL when component unmounts or logo changes
             useEffect(() => {
@@ -203,7 +190,7 @@
             };
 
 
-            // Exponential backoff retry function for API calls
+            // Exponential backoff retry function for API calls (still needed for robust network access to the proxy)
             const withRetry = useCallback(async (fn, retries = 3) => {
                 for (let i = 0; i < retries; i++) {
                     try {
@@ -220,7 +207,6 @@
             const constructPrompt = useCallback((hasRealLogo) => {
                 const typeLabel = JERSEY_TYPES.find(t => t.value === jerseyType)?.label || 'Jersey';
                 
-                // Design Instruction: conditional inclusion of stripes, gradients, etc.
                 const designInstruction = designElements.trim() 
                     ? `- Pattern/Design: Incorporate the following design elements: ${designElements}.` 
                     : '';
@@ -231,8 +217,7 @@
                     // Case 1: Real Logo Uploaded. Tell the AI to use the image.
                     logoInstruction = `Use the attached image as the logo. Place this exact logo on the center chest.`;
                 } else {
-                    // Case 2: No Logo Uploaded. Tell the AI to IGNORE the blank image (forcing the multimodal path) 
-                    // and instead create a text-based design.
+                    // Case 2: No Logo Uploaded. Tell the AI to IGNORE the blank image 
                     logoInstruction = `**NO EXTERNAL LOGO IS PROVIDED.** Ignore the blank image input. Instead, the logo should be the team name, "${teamName.toUpperCase()}", rendered as a clean, sharp decal in the Secondary Color. Place this decal prominently on the center chest as the main graphic.`;
                 }
 
@@ -257,26 +242,17 @@
                 return detailPrompt;
             }, [jerseyType, teamName, primaryColor, secondaryColor, thirdColor, designElements]);
 
-            // --- Image Generation Handler ---
+            // --- Image Generation Handler (Now calls the proxy server) ---
             const generateImage = useCallback(async () => {
-                if (!apiKeyProvided) {
-                    setError("API Key is missing. Please paste your key into the code.");
-                    return;
-                }
-
                 setIsLoading(true);
                 setError(null);
                 setImageUrl('');
 
-                const modelName = 'gemini-2.5-flash-image-preview'; // UNIFIED MODEL
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${API_KEY}`;
-                
                 let base64ImageToUse;
                 let mimeTypeToUse;
                 let hasRealLogo = false;
 
                 if (logoFile) {
-                    // User uploaded a file: use the real image data
                     try {
                         base64ImageToUse = await fileToBase64(logoFile);
                         mimeTypeToUse = logoFile.type;
@@ -289,61 +265,57 @@
                     }
                 
                 } else {
-                    // No file uploaded: use the blank transparent image
                     base64ImageToUse = BLANK_LOGO_BASE64;
                     mimeTypeToUse = 'image/png';
                 }
                 
                 const prompt = constructPrompt(hasRealLogo);
 
+                // --- UPDATED NETLIFY FUNCTION ENDPOINT ---
+                const proxyUrl = '/.netlify/functions/generate-jersey'; 
+
                 const payload = {
-                    contents: [{
-                        parts: [
-                            { text: prompt },
-                            {
-                                inlineData: {
-                                    mimeType: mimeTypeToUse,
-                                    data: base64ImageToUse
-                                }
-                            }
-                        ]
-                    }],
-                    generationConfig: {
-                        responseModalities: ['TEXT', 'IMAGE']
-                    },
+                    prompt: prompt,
+                    logoData: {
+                        mimeType: mimeTypeToUse,
+                        data: base64ImageToUse
+                    }
                 };
 
                 try {
                     const fetchFn = async () => {
-                        const response = await fetch(apiUrl, {
+                        // The frontend sends the entire payload to the backend proxy
+                        const response = await fetch(proxyUrl, { 
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(payload)
                         });
+                        
+                        // The proxy sends back a simplified JSON response
+                        const result = await response.json(); 
+
                         if (!response.ok) {
-                            const errorBody = await response.json();
-                            throw new Error(errorBody.error?.message || `API call failed with status: ${response.status}`);
+                            // Handle errors sent back by the proxy server
+                            throw new Error(result.error || `Proxy error: ${response.statusText}`);
                         }
-                        return response.json();
+
+                        if (result.base64Data) {
+                            setImageUrl(`data:image/png;base64,${result.base64Data}`);
+                        } else {
+                            setError("Proxy call failed to return image data.");
+                        }
+                        return result; // Return result for the retry mechanism
                     };
 
-                    const result = await withRetry(fetchFn);
+                    await withRetry(fetchFn);
                     
-                    // Extract image data from the multimodal response structure
-                    const base64Data = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-                    
-                    if (base64Data) {
-                        setImageUrl(`data:image/png;base64,${base64Data}`);
-                    } else {
-                        setError("Image generation failed to return data. The AI may be struggling with complex instructions.");
-                    }
                 } catch (err) {
                     console.error("Image generation error:", err);
-                    setError(`Failed to generate image. Please check your API key or try simplifying the design elements. (${err.message})`);
+                    setError(`Failed to generate image. Please ensure your Netlify Function is deployed and configured correctly. (${err.message})`);
                 } finally {
                     setIsLoading(false);
                 }
-            }, [constructPrompt, withRetry, logoFile, apiKeyProvided]); 
+            }, [constructPrompt, withRetry, logoFile]); 
 
             // Find the current icon based on the selected jersey type
             const currentJerseyType = JERSEY_TYPES.find(t => t.value === jerseyType);
@@ -357,12 +329,11 @@
                         AI Team Jersey Customizer
                     </h1>
 
-                    {!apiKeyProvided && (
-                        <div className="bg-red-600/20 border-l-4 border-red-500 text-red-100 p-4 mb-6 rounded-lg max-w-6xl mx-auto" role="alert">
-                            <p className="font-bold">CRITICAL SETUP WARNING</p>
-                            <p>The **API Key is missing**. Please paste your valid Google AI key into the `const API_KEY = ""...` line in the code to enable image generation.</p>
-                        </div>
-                    )}
+                    {/* API Key Warning - Now a Proxy/Deployment Warning */}
+                    <div className="bg-blue-600/20 border-l-4 border-blue-500 text-blue-100 p-4 mb-6 rounded-lg max-w-6xl mx-auto" role="alert">
+                        <p className="font-bold">NETLIFY FUNCTION REQUIRED FOR FUNCTIONALITY</p>
+                        <p>This front-end is now configured to call the Netlify Function at `/.netlify/functions/generate-jersey`. Follow the deployment guide to secure your API key as an **environment variable** on Netlify.</p>
+                    </div>
 
                     <div className="flex flex-col lg:flex-row gap-8 max-w-6xl mx-auto">
                         
@@ -494,20 +465,20 @@
                                         placeholder="Describe the logo you uploaded (e.g., A fierce red dragon head)"
                                     />
                                     <p className="text-xs text-gray-500">
-                                        When a logo is uploaded, the AI uses the **image file itself** along with this text description for best results. If no logo is uploaded, it generates a text design.
+                                        The AI uses the **image file itself** along with this text description for best results.
                                     </p>
                                 </div>
 
                                 {/* Generate Button */}
                                 <button
                                     onClick={generateImage}
-                                    disabled={isLoading || !apiKeyProvided}
+                                    disabled={isLoading}
                                     className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-4 focus:ring-purple-500 focus:ring-opacity-50 transition duration-150 ease-in-out shadow-lg disabled:opacity-50 mt-6"
                                 >
                                     {isLoading ? (
                                         <>
                                             <Loader className="animate-spin w-5 h-5 mr-3" />
-                                            Rendering Mockup...
+                                            Requesting Mockup from Netlify...
                                         </>
                                     ) : (
                                         <>
@@ -547,7 +518,7 @@
                                 {!imageUrl && !isLoading && !error && (
                                     <div className="text-gray-500 dark:text-gray-400 text-center p-6">
                                         <Image className="w-16 h-16 mx-auto mb-3" />
-                                        <p>Customize your design and click 'Generate High-Quality Mockup' to see the result here.</p>
+                                        <p>Customize your design and click 'Generate High-Quality Mockup' to send the request to your secure server.</p>
                                     </div>
                                 )}
                             </div>
