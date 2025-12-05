@@ -11,6 +11,9 @@ const CORS_HEADERS = {
     'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+// Define a reasonable minimum size for a Base64 encoded image string (e.g., 500 characters)
+const MIN_LOGO_SIZE_CHARS = 500;
+
 exports.handler = async (event) => {
     // 1. Handle CORS Preflight Check
     if (event.httpMethod === 'OPTIONS') {
@@ -58,6 +61,18 @@ exports.handler = async (event) => {
         // Log input size for debugging potential payload limits
         console.log(`Input data size: ${rawBase64Data.length} chars (approx ${Math.ceil(rawBase64Data.length * 0.75 / 1024)} KB)`);
 
+        // === NEW CHECK: Validate Base64 data size ===
+        if (rawBase64Data.length < MIN_LOGO_SIZE_CHARS) {
+            console.error("Logo data appears empty or too small:", rawBase64Data.length);
+             return {
+                statusCode: 400,
+                headers: CORS_HEADERS,
+                body: JSON.stringify({
+                    error: "Generation Error: The uploaded logo file is empty or corrupted. Please check your file upload in the frontend and ensure the Base64 data is correctly read."
+                })
+            };
+        }
+        // ============================================
 
         // 1. Exponential Backoff Utility for retries
         const callApiWithBackoff = async (url, options, retries = 3) => {
