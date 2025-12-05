@@ -38,7 +38,6 @@ exports.handler = async (event) => {
     }
 
     try {
-        // Now expecting prompt and logoData, like the frontend sends
         const { prompt, logoData } = JSON.parse(event.body);
 
         if (!prompt) {
@@ -48,6 +47,17 @@ exports.handler = async (event) => {
                 headers: CORS_HEADERS,
             };
         }
+        
+        // **CRITICAL FIX:** Ensure the Base64 data string does not contain the URI prefix
+        let rawBase64Data = logoData.data;
+        if (rawBase64Data.includes(',')) {
+            // Strip the part before the first comma (e.g., 'data:image/png;base64,')
+            rawBase64Data = rawBase64Data.split(',')[1];
+        }
+        
+        // Log input size for debugging potential payload limits
+        console.log(`Input data size: ${rawBase64Data.length} chars (approx ${Math.ceil(rawBase64Data.length * 0.75 / 1024)} KB)`);
+
 
         // 1. Exponential Backoff Utility for retries
         const callApiWithBackoff = async (url, options, retries = 3) => {
@@ -84,7 +94,7 @@ exports.handler = async (event) => {
                     {
                         inlineData: {
                             mimeType: logoData.mimeType,
-                            data: logoData.data // This is the base64 data for the logo
+                            data: rawBase64Data // Use the cleaned raw base64 data
                         }
                     }
                 ]
@@ -114,8 +124,22 @@ exports.handler = async (event) => {
             };
         } else {
             // === NEW IMPROVED ERROR HANDLING (ADJUSTED FOR GENERATECONTENT) ===
-            // Check for safety filter issues, which is a common cause of missing image data
-            const safetyRating = response.candidates?.[0]?.safetyRatings?.map(r => 
+            
+            const candidates = response.candidates || [];
+            
+            // Check for empty candidates array, often means content policy violation
+            if (candidates.length === 0) {
+                return {
+                    statusCode: 400,
+                    headers: CORS_HEADERS,
+                    body: JSON.stringify({
+                        error: "Generation Error: The input or prompt may violate safety guidelines, or the model failed to generate output."
+                    })
+                };
+            }
+            
+            // Check for safety filter issues if candidates exist but no image part was found
+            const safetyRating = candidates[0]?.safetyRatings?.map(r => 
                 `${r.category.split('_').pop()}: ${r.probability}`
             ).join('; ');
 
