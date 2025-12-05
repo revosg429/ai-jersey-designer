@@ -6,9 +6,12 @@
     <title>AI Team Jersey Customizer</title>
     <!-- Load Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load React and ReactDOM via CDN -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react.development.js"></script>
+    
+    <!-- FIX: Load stable React and ReactDOM for robust initialization -->
+    <!-- We are loading the classic, stable versions to avoid the ReactDOM.createRoot dependency issue -->
+    <script src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
+    
     <!-- Load Babel for JSX compilation in the browser -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
@@ -529,8 +532,8 @@
             );
         };
 
-        // Render the main App component
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+        // FIX: Use the legacy ReactDOM.render method for robust CDN compatibility
+        ReactDOM.render(<App />, document.getElementById('root'));
     </script>
 </body>
 </html>
