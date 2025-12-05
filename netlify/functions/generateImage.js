@@ -101,12 +101,27 @@ exports.handler = async (event) => {
                 body: JSON.stringify({ imageUrl: imageUrl })
             };
         } else {
-            console.error("API response missing image data:", response);
+            // === NEW IMPROVED ERROR HANDLING ===
+            // Check for safety filter issues, which is a common cause of missing image data
+            const safetyRating = response.candidates?.[0]?.safetyRatings?.map(r => 
+                `${r.category.split('_').pop()}: ${r.probability}`
+            ).join('; ');
+
+            const errorMessage = safetyRating 
+                ? `Image was filtered by safety systems. Ratings: ${safetyRating}`
+                : "Could not extract image data from API response (check Netlify logs for full response).";
+                
+            // Log the full response body for detailed server-side debugging
+            console.error("API response missing image data. Full response:", JSON.stringify(response, null, 2));
+
             return {
                 statusCode: 500,
                 headers: CORS_HEADERS, // Include CORS headers in error response
-                body: JSON.stringify({ error: "Generation Error: Could not extract image data from API response." })
+                body: JSON.stringify({ 
+                    error: `Generation Error: ${errorMessage}` 
+                })
             };
+            // ====================================
         }
 
     } catch (error) {
