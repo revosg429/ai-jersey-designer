@@ -1,202 +1,131 @@
-// This function handles the request to the Gemini API for image generation (multi-modal: text + image).
+/**
+ * @fileoverview Google Apps Script file for generating images using the Gemini API (Imagen).
+ *
+ * NOTE: This script now uses the PropertiesService for secure storage of the API key.
+ * You MUST run the setApiKey() function once in the Apps Script editor to save your key.
+ */
 
-const API_KEY = process.env.GEMINI_API_KEY; // Ensure this is correctly named in Netlify env vars
-// IMPORTANT: Switched model back to the multi-modal version to handle logo input
-const MODEL_NAME = 'gemini-2.5-flash-image-preview'; 
+// Placeholder for the API Key property name
+const API_KEY_PROPERTY = 'GEMINI_API_KEY';
+const IMAGE_MODEL = 'imagen-4.0-generate-001';
 
-// Define headers for CORS access
-const CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*', // Allows access from any domain
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-};
+/**
+ * [IMPORTANT] Saves your Gemini API key securely using the Script Properties service.
+ * Run this function once in the Apps Script editor after setting your key below.
+ */
+function setApiKey() {
+  // REPLACE "YOUR_GEMINI_API_KEY_HERE" with your actual API key before running.
+  const myApiKey = "AIzaSyDZgYdi1_pjTq_yOvWMi0F5dyA_oZe8_K0"; 
 
-// Define a reasonable minimum size for a Base64 encoded image string (e.g., 500 characters)
-const MIN_LOGO_SIZE_CHARS = 500;
+  if (myApiKey === "AIzaSyDZgYdi1_pjTq_yOvWMi0F5dyA_oZe8_K0") {
+    Logger.log("Error: Please replace 'YOUR_GEMINI_API_KEY_HERE' with your actual key before running setApiKey().");
+    return;
+  }
+  
+  PropertiesService.getScriptProperties().setProperty(API_KEY_PROPERTY, myApiKey);
+  Logger.log("API Key saved securely to PropertiesService.");
+}
 
-exports.handler = async (event) => {
-    // 1. Handle CORS Preflight Check
-    if (event.httpMethod === 'OPTIONS') {
-        return {
-            statusCode: 200,
-            headers: CORS_HEADERS,
-        };
+
+/**
+ * Generates an image based on a text prompt using the Imagen model.
+ *
+ * @param {string} prompt The text description of the image to generate.
+ * @returns {string|null} The Base64 encoded string of the generated image (PNG format), or null on failure.
+ */
+function generateImage(prompt) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty(API_KEY_PROPERTY);
+
+  if (!apiKey) {
+    Logger.log(`Error: API Key not found. Please run the setApiKey() function first.`);
+    return null;
+  }
+  
+  if (!prompt) {
+    Logger.log("Error: Prompt is empty.");
+    return null;
+  }
+  
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${IMAGE_MODEL}:predict?key=${apiKey}`;
+
+  // Define the request payload for the Imagen model
+  const payload = {
+    instances: [{ prompt: prompt }],
+    parameters: {
+      sampleCount: 1, // Generate one image
+      outputMimeType: "image/png"
+      // You can add 'aspectRatio' here, e.g., '1:1', '3:4', '4:3', '16:9', '9:16'
     }
+  };
 
-    if (event.httpMethod !== 'POST') {
-        return { 
-            statusCode: 405, 
-            body: 'Method Not Allowed',
-            headers: CORS_HEADERS,
-        };
-    }
+  const options = {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true // Allows the script to catch HTTP errors
+  };
 
-    // Check for API Key before proceeding
-    if (!API_KEY) {
-        return {
-            statusCode: 500,
-            headers: CORS_HEADERS,
-            body: JSON.stringify({ error: "CRITICAL: API Key not configured on the server." }),
-        };
-    }
+  Logger.log(`Sending request for prompt: ${prompt}`);
 
-    try {
-        const { prompt, logoData } = JSON.parse(event.body);
+  try {
+    // Implement simple exponential backoff for resilience (max 3 retries)
+    const MAX_RETRIES = 3;
+    for (let i = 0; i < MAX_RETRIES; i++) {
+        const response = UrlFetchApp.fetch(API_URL, options);
+        const responseCode = response.getResponseCode();
+        const responseText = response.getContentText();
 
-        if (!prompt) {
-            return { 
-                statusCode: 400, 
-                body: 'Missing prompt',
-                headers: CORS_HEADERS,
-            };
-        }
-        
-        // **CRITICAL FIX:** Ensure the Base64 data string does not contain the URI prefix
-        let rawBase64Data = logoData.data;
-        if (rawBase64Data.includes(',')) {
-            // Strip the part before the first comma (e.g., 'data:image/png;base64,')
-            rawBase64Data = rawBase64Data.split(',')[1];
-        }
-        
-        // Log input size for debugging potential payload limits
-        console.log(`Input data size: ${rawBase64Data.length} chars (approx ${Math.ceil(rawBase64Data.length * 0.75 / 1024)} KB)`);
-
-        // === NEW CHECK: Validate Base64 data size ===
-        if (rawBase64Data.length < MIN_LOGO_SIZE_CHARS) {
-            console.error("Logo data appears empty or too small:", rawBase64Data.length);
-             return {
-                statusCode: 400,
-                headers: CORS_HEADERS,
-                body: JSON.stringify({
-                    error: "Generation Error: The uploaded logo file is empty or corrupted. Please check your file upload in the frontend and ensure the Base64 data is correctly read."
-                })
-            };
-        }
-        // ============================================
-
-        // 1. Exponential Backoff Utility for retries
-        const callApiWithBackoff = async (url, options, retries = 3) => {
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const response = await fetch(url, options);
-                    if (response.status === 429) { // Rate limit error
-                        const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
-                        console.warn(`Rate limit hit (429). Retrying in ${delay / 1000}s...`);
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        continue;
-                    }
-                    if (!response.ok) {
-                        const errorBody = await response.text();
-                        // Throw a specific error for external API issues
-                        throw new Error(`External API Error ${response.status}: ${errorBody}`);
-                    }
-                    return response.json();
-                } catch (error) {
-                    if (i === retries - 1) throw error; // Re-throw if last attempt
-                    // The error is handled by the loop/retry logic
-                }
+        if (responseCode === 200) {
+            const result = JSON.parse(responseText);
+            
+            // Check if predictions exist and contain image data
+            if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+              const base64Image = result.predictions[0].bytesBase64Encoded;
+              Logger.log("Image generation successful. Returning Base64 data.");
+              return base64Image;
+            } else {
+              Logger.log("API response missing expected image data structure.");
+              return null;
             }
-        };
-
-        // Switched to the generateContent endpoint for multi-modal
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
-        
-        // Payload structure for gemini-2.5-flash-image-preview (multi-modal)
-        const payload = {
-            contents: [{
-                parts: [
-                    { text: prompt },
-                    {
-                        inlineData: {
-                            mimeType: logoData.mimeType,
-                            data: rawBase64Data // Use the cleaned raw base64 data
-                        }
-                    }
-                ]
-            }],
-            generationConfig: {
-                // Requesting both TEXT and IMAGE modalities in the response
-                responseModalities: ['TEXT', 'IMAGE'] 
-            }
-        };
-
-        const response = await callApiWithBackoff(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        // The image data extraction path for generateContent is different from :predict
-        const base64Data = response?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-
-        if (base64Data) {
-            const imageUrl = `data:image/png;base64,${base64Data}`;
-
-            return {
-                statusCode: 200,
-                headers: CORS_HEADERS, // Include CORS headers in success response
-                body: JSON.stringify({ imageUrl: imageUrl })
-            };
+        } else if (responseCode === 429 && i < MAX_RETRIES - 1) { // 429 is Too Many Requests (Rate Limit)
+            const delay = Math.pow(2, i) * 1000; // 1s, 2s, 4s
+            Logger.log(`Rate limit exceeded (429). Retrying in ${delay / 1000} seconds...`);
+            Utilities.sleep(delay);
         } else {
-            // === NEW IMPROVED ERROR HANDLING (ADJUSTED FOR GENERATECONTENT) ===
-            
-            const candidates = response.candidates || [];
-            
-            // Check for empty candidates array, often means content policy violation
-            if (candidates.length === 0) {
-                return {
-                    statusCode: 400,
-                    headers: CORS_HEADERS,
-                    body: JSON.stringify({
-                        error: "Generation Error: The input or prompt may violate safety guidelines, or the model failed to generate output."
-                    })
-                };
-            }
-            
-            // Check for safety filter issues if candidates exist but no image part was found
-            const safetyRating = candidates[0]?.safetyRatings?.map(r => 
-                `${r.category.split('_').pop()}: ${r.probability}`
-            ).join('; ');
-
-            const errorMessage = safetyRating 
-                ? `Image was filtered by safety systems. Ratings: ${safetyRating}`
-                : "Could not extract image data from API response (check Netlify logs for full response).";
-                
-            // Log the full response body for detailed server-side debugging
-            console.error("API response missing image data. Full response:", JSON.stringify(response, null, 2));
-
-            return {
-                statusCode: 500,
-                headers: CORS_HEADERS, // Include CORS headers in error response
-                body: JSON.stringify({ 
-                    error: `Generation Error: ${errorMessage}` 
-                })
-            };
-            // ====================================
+            Logger.log(`API Call Failed. Response Code: ${responseCode}`);
+            Logger.log(`Response: ${responseText}`);
+            return null;
         }
-
-    } catch (error) {
-        // Extract and format the specific quota error message if present
-        let errorMessage = error.message;
-
-        // Try to parse the specific quota error out of the message
-        try {
-            const match = error.message.match(/External API Error \d+: (.*)/s);
-            if (match && match[1]) {
-                const apiError = JSON.parse(match[1]);
-                if (apiError.error?.message) {
-                    errorMessage = apiError.error.message;
-                }
-            }
-        } catch (e) {
-            // ignore JSON parsing errors
-        }
-
-        console.error('Function execution error:', error.message);
-        return {
-            statusCode: 500,
-            headers: CORS_HEADERS, // Include CORS headers in final error response
-            body: JSON.stringify({ error: `Generation Error: Failed to generate image. ${errorMessage}` })
-        };
     }
-};
+    return null; // All retries failed
+
+  } catch (error) {
+    Logger.log(`An error occurred during API fetch: ${error.toString()}`);
+    return null;
+  }
+}
+
+/**
+ * Example function to demonstrate how to call generateImage.
+ * This is designed to be run directly in the Apps Script environment (Run > runTest).
+ */
+function runTest() {
+  Logger.log("--- Checking API Key Setup ---");
+  const apiKeyCheck = PropertiesService.getScriptProperties().getProperty(API_KEY_PROPERTY);
+  if (!apiKeyCheck) {
+    Logger.log("SETUP REQUIRED: The API key is not set. Please run the setApiKey() function first.");
+    return;
+  }
+  
+  const testPrompt = "A photorealistic image of a golden retriever wearing a tiny chef hat, standing in a brightly lit kitchen.";
+  Logger.log("--- Starting Test Image Generation ---");
+  
+  const base64Data = generateImage(testPrompt);
+  
+  if (base64Data) {
+    Logger.log("--- Image Data Successfully Received ---");
+    Logger.log("To view the image, use a Base64 to Image decoder online or integrate with a Google service like DocumentApp or SpreadsheetApp.");
+  } else {
+    Logger.log("--- Image Generation Failed ---");
+  }
+}
