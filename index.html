@@ -29,7 +29,7 @@
         <h1 class="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-2">
             AI Custom Jersey Designer
         </h1>
-        <p class="text-gray-400">Powered by Google Gemini & Image Models</p>
+        <p class="text-gray-400">Now using the Gemini API directly for reliable generation.</p>
     </header>
 
     <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -44,7 +44,7 @@
                     id="prompt"
                     class="w-full p-3 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 transition duration-150 shadow-inner"
                     rows="5"
-                    placeholder="E.g., 'A vintage 90s basketball jersey with neon green lightning bolts and a lion head logo in the center.'"
+                    placeholder="E.g., 'A vintage 90s basketball jersey with neon green lightning bolts and a lion head logo in the center. Use a football jersey template.'"
                 ></textarea>
             </div>
 
@@ -107,9 +107,10 @@
         // === Core Application Logic ===
         
         // --- Configuration ---
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyaQpTsHvKYRbQq3XAANW9st55HJ2AyBbWftvPWQF6xCtyET1sBqUqIH0Uqm7mM7acu/exec';
-        // Base64 of a transparent 1x1 PNG. Used when no logo is uploaded.
-        const TRANSPARENT_LOGO_DATA = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+        const API_MODEL = 'gemini-2.5-flash-image-preview'; // Supports multimodal image/text input
+        const API_URL_BASE = `https://generativelanguage.googleapis.com/v1beta/models/${API_MODEL}:generateContent?key=`;
+        const API_KEY = ""; // Automatically provided by the Canvas environment
+        
         const MAX_RETRIES = 3;
         const RETRY_DELAY_MS = 1000; // Initial delay for exponential backoff
 
@@ -144,7 +145,7 @@
                 }
                 if (!response.ok) {
                     const errorJson = await response.json();
-                    throw new Error(errorJson.error || `HTTP error! Status: ${response.status}`);
+                    throw new Error(errorJson.error?.message || `HTTP error! Status: ${response.status}`);
                 }
                 return response;
             } catch (error) {
@@ -162,6 +163,7 @@
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => {
+                    // Extract the base64 part (after the comma)
                     const base64String = reader.result.split(',')[1];
                     resolve({
                         mimeType: file.type,
@@ -197,14 +199,15 @@
             clearError();
 
             if (file) {
-                if (file.size > 1024 * 1024) {
-                    showError('File size exceeds 1MB limit.');
+                // Keep file size limit reasonable for the environment
+                if (file.size > 1024 * 1024 * 4) { // 4MB limit
+                    showError('File size exceeds 4MB limit. Please choose a smaller image.');
                     selectedFile = null;
                     fileStatus.classList.add('hidden');
                     return;
                 }
                 selectedFile = file;
-                fileStatus.textContent = `${file.name} ready.`;
+                fileStatus.textContent = `${file.name} ready to be used as a logo.`;
                 fileStatus.classList.remove('hidden');
             } else {
                 selectedFile = null;
@@ -226,38 +229,58 @@
             resultImage.classList.add('hidden');
             placeholder.classList.add('hidden');
             
-            let logoData;
+            let parts = [];
             
             try {
+                // 1. Prepare parts for Multimodal Payload
+                let finalPrompt = prompt;
+
                 if (selectedFile) {
-                    logoData = await fileToBase64(selectedFile);
+                    const fileData = await fileToBase64(selectedFile);
+                    
+                    // Add image data part
+                    parts.push({
+                        inlineData: {
+                            mimeType: fileData.mimeType,
+                            data: fileData.data
+                        }
+                    });
+                    
+                    // Modify prompt to explicitly instruct image incorporation
+                    finalPrompt = `Using the uploaded image as a logo or central design element, generate a high-quality, realistic image of a sports jersey incorporating the following design instructions: ${finalPrompt}. Focus on making the logo clearly visible and centered on the chest.`;
                 } else {
-                    logoData = {
-                        mimeType: 'image/png',
-                        data: TRANSPARENT_LOGO_DATA
-                    };
+                     // Standard prompt if no image uploaded, adding context for jersey generation
+                    finalPrompt = `Generate a high-quality, realistic image of a sports jersey based on the following description: ${finalPrompt}`;
                 }
                 
-                const payload = { prompt, logoData };
+                parts.push({ text: finalPrompt });
 
-                const response = await fetchWithRetry(APPS_SCRIPT_URL, {
+                // 2. Construct API Payload
+                const payload = {
+                    contents: [{ parts: parts }],
+                    generationConfig: {
+                        responseModalities: ['TEXT', 'IMAGE'] // Request both image and text response
+                    },
+                };
+
+                // 3. Make API Call
+                const response = await fetchWithRetry(API_URL_BASE + API_KEY, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
                 const result = await response.json();
-
-                if (result.error) {
-                    throw new Error(result.error);
-                }
                 
-                // The Apps Script returns the full data URL, or the base64 data
-                const finalImageUrl = result.imageUrl || (result.base64Data ? `data:image/png;base64,${result.base64Data}` : null);
+                // 4. Extract Base64 Image Data
+                const base64Data = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
 
-                if (!finalImageUrl) {
-                    throw new Error("API response missing image data.");
+                if (!base64Data) {
+                    const errorMessage = result.error?.message || result.candidates?.[0]?.finishReason || "Could not generate image. The prompt may be too specific or abstract. Try a different description.";
+                    throw new Error(errorMessage);
                 }
+
+                const finalImageUrl = `data:image/png;base64,${base64Data}`;
 
                 currentImageUrl = finalImageUrl;
                 resultImage.src = finalImageUrl;
@@ -266,7 +289,7 @@
 
             } catch (err) {
                 console.error("Image generation failed:", err);
-                showError(err.message || 'Check the console for detailed error messages.');
+                showError(err.message || 'An unknown error occurred during image generation.');
                 placeholder.classList.remove('hidden');
             } finally {
                 setLoadingState(false);
