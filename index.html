@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Jersey Designer</title>
+    <title>AI Jersey Designer - Direct API</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Set Inter font globally */
@@ -22,14 +22,20 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 15px rgba(126, 34, 206, 0.4);
         }
+        /* Custom image styling */
+        .mockup-image {
+            max-width: 100%;
+            height: auto;
+            max-height: 80vh; /* Responsive height limit */
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen p-4 md:p-8 flex flex-col items-center">
     <header class="text-center mb-8">
         <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
-            AI Jersey Designer
+            AI Jersey Designer (Direct API)
         </h1>
-        <p class="text-gray-400 mt-2">Design custom sports mockups using a prompt and an optional logo image.</p>
+        <p class="text-gray-400 mt-2">Design custom sports mockups using a prompt. (Logo upload feature disabled for direct API call).</p>
     </header>
 
     <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -39,28 +45,18 @@
             
             <!-- Prompt Input -->
             <div class="card p-6 rounded-xl shadow-lg">
-                <label for="prompt" class="block text-lg font-semibold mb-2 text-purple-300">1. Describe Your Jersey</label>
+                <label for="prompt" class="block text-lg font-semibold mb-2 text-purple-300">1. Describe Your Jersey Design</label>
                 <textarea id="prompt" 
-                          rows="4" 
-                          placeholder="Example: Blue and gold striped basketball jersey, sharp geometric pattern, large number 23 on the back, futuristic style." 
+                          rows="6" 
+                          placeholder="Example: A professional soccer jersey mockup, bold stripes in crimson and silver, futuristic texture, visible stitching, high quality photo, studio lighting." 
                           class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 focus:ring-pink-500 focus:border-pink-500 text-gray-200 resize-none"></textarea>
             </div>
-
-            <!-- Logo Upload -->
-            <div class="card p-6 rounded-xl shadow-lg">
-                <label for="logoUpload" class="block text-lg font-semibold mb-2 text-purple-300">2. Upload Optional Logo</label>
-                <input type="file" id="logoUpload" accept="image/*" class="block w-full text-sm text-gray-400
-                  file:mr-4 file:py-2 file:px-4
-                  file:rounded-full file:border-0
-                  file:text-sm file:font-semibold
-                  file:bg-purple-500 file:text-white
-                  hover:file:bg-purple-600
-                ">
-                <div id="logoPreviewContainer" class="mt-4 hidden border border-gray-600 rounded-lg p-2 bg-gray-800">
-                    <p class="text-xs text-gray-400 mb-1">Logo Preview (Used as design element):</p>
-                    <img id="logoPreview" class="max-h-20 w-auto rounded object-contain mx-auto" alt="Logo Preview">
-                    <button id="removeLogo" class="mt-2 text-xs text-red-400 hover:text-red-500">Remove Logo</button>
-                </div>
+            
+            <!-- Logo Note (Removed input field) -->
+            <div class="card p-4 rounded-xl shadow-lg bg-gray-800 border-yellow-500 border">
+                 <p class="text-sm text-yellow-300 font-semibold">
+                    Note: Due to API limitations, the image upload feature has been removed. Please describe any logos or text in your prompt instead.
+                </p>
             </div>
 
             <!-- Generate Button -->
@@ -80,7 +76,7 @@
             <!-- Image Output Container -->
             <div class="card p-4 rounded-xl shadow-lg min-h-[400px] flex items-center justify-center relative">
                 <div id="imageDisplay" class="w-full h-full flex items-center justify-center">
-                    <p class="text-gray-500 text-center">Your custom jersey mockup will appear here.</p>
+                    <p class="text-gray-500 text-center">Your custom jersey mockup will appear here after generation.</p>
                 </div>
                 
                 <!-- Loading Spinner -->
@@ -90,35 +86,27 @@
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     <p class="text-lg font-semibold text-white">Generating Mockup...</p>
-                    <p class="text-sm text-gray-300 mt-1">This may take 10-30 seconds.</p>
+                    <p class="text-sm text-gray-300 mt-1">This uses the Imagen model and typically takes 10-30 seconds.</p>
                 </div>
             </div>
         </div>
     </main>
 
     <script>
-        // === Configuration ===
-        
-        // !!! IMPORTANT: This is the verified URL. Do NOT change this. !!!
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgsAWNtnU5bGWvKjBGoqIRL_D5JkpvloFuBwrjRgbzWs5k8nSX99q0vMS_Ux-Qc2VQ/exec'; 
+        // === Configuration for Direct API Call ===
+        const MODEL_NAME = 'imagen-4.0-generate-001';
+        const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:predict?key=`;
+        const API_KEY = ""; // Canvas provides this automatically via proxy
         
         const MAX_RETRIES = 3;
-        const RETRY_DELAY_MS = 1000;
-        
+        const RETRY_DELAY_MS = 2000; // Increased delay for model stability
+
         // === DOM Elements ===
         const promptInput = document.getElementById('prompt');
-        const logoUpload = document.getElementById('logoUpload');
-        const logoPreview = document.getElementById('logoPreview');
-        const logoPreviewContainer = document.getElementById('logoPreviewContainer');
-        const removeLogoBtn = document.getElementById('removeLogo');
         const generateButton = document.getElementById('generateButton');
         const imageDisplay = document.getElementById('imageDisplay');
         const loadingOverlay = document.getElementById('loadingOverlay');
         const messageBox = document.getElementById('messageBox');
-
-        // Global variable to hold the logo data URL (base64)
-        let logoBase64Data = null;
-        let logoMimeType = null;
 
         // === Utility Functions ===
         
@@ -143,55 +131,6 @@
             loadingOverlay.classList.toggle('flex', isLoading);
         }
 
-        /**
-         * Converts a File object to a base64 string and updates global variables.
-         * @param {File} file 
-         */
-        function fileToBase64(file) {
-            if (!file) {
-                logoBase64Data = null;
-                logoMimeType = null;
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                // Remove the data URL prefix (e.g., "data:image/png;base64,")
-                const base64String = reader.result.split(',')[1];
-                
-                logoBase64Data = base64String;
-                logoMimeType = file.type;
-                
-                logoPreview.src = reader.result;
-                logoPreviewContainer.classList.remove('hidden');
-            };
-            reader.onerror = () => {
-                showMessage('Error reading file.', true);
-                logoBase64Data = null;
-                logoMimeType = null;
-                logoPreviewContainer.classList.add('hidden');
-            };
-            reader.readAsDataURL(file);
-        }
-
-        // === Event Listeners ===
-
-        logoUpload.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            fileToBase64(file);
-        });
-
-        removeLogoBtn.addEventListener('click', (event) => {
-            event.preventDefault();
-            logoUpload.value = ''; // Clear the file input
-            logoBase64Data = null;
-            logoMimeType = null;
-            logoPreviewContainer.classList.add('hidden');
-            logoPreview.src = '';
-            clearMessage();
-        });
-
-
         // === Main Logic ===
 
         async function generateMockup() {
@@ -206,60 +145,64 @@
             setLoading(true);
             imageDisplay.innerHTML = '';
             
+            // Craft the complete prompt to ensure it generates a "jersey mockup"
+            const fullPrompt = `Photorealistic image of a sports jersey mockup. On a white background. ${prompt}.`;
+
             const payload = {
-                prompt: prompt,
-                logoData: logoBase64Data ? {
-                    data: logoBase64Data,
-                    mimeType: logoMimeType
-                } : null
+                instances: {
+                    prompt: fullPrompt
+                },
+                parameters: {
+                    sampleCount: 1,
+                    // Optionally specify aspect ratio, e.g., "1:1" for square
+                    aspectRatio: "1:1", 
+                }
             };
+            
+            const apiUrl = `${API_ENDPOINT}${API_KEY}`;
 
             for (let i = 0; i < MAX_RETRIES; i++) {
                 try {
-                    showMessage(`Attempt ${i + 1}/${MAX_RETRIES}: Requesting image generation...`, false);
+                    showMessage(`Attempt ${i + 1}/${MAX_RETRIES}: Sending prompt to Imagen...`, false);
                     
-                    // CRITICAL FIX: The fetch request is simplified here for Apps Script compatibility.
-                    // We keep 'application/json' because the Apps Script doPost function expects it,
-                    // but we ensure the headers are minimal.
-                    const response = await fetch(APPS_SCRIPT_URL, {
+                    const response = await fetch(apiUrl, {
                         method: 'POST',
-                        mode: 'cors', // Explicitly setting CORS mode for better compatibility
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify(payload)
                     });
 
-                    // Check if the network request itself failed (like CORS or network down)
                     if (!response.ok) {
-                        throw new Error(`HTTP error! Status: ${response.status} ${response.statusText || ''}.`);
+                        throw new Error(`HTTP error! Status: ${response.status}`);
                     }
 
                     const result = await response.json();
 
-                    // Check for server-side error message returned by Code.gs
-                    if (result.error) {
-                        throw new Error(result.error);
+                    // Check if the response contains predictions
+                    if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                        const base64Data = result.predictions[0].bytesBase64Encoded;
+                        const imageUrl = `data:image/png;base64,${base64Data}`;
+                        
+                        imageDisplay.innerHTML = `<img src="${imageUrl}" alt="Generated Jersey Mockup" class="mockup-image rounded-xl shadow-2xl">`;
+                        showMessage("Success! Your custom jersey mockup is ready.", false);
+                        setLoading(false);
+                        return; // Exit function on success
+                    } else {
+                        throw new Error("API response was successful but contained no image data.");
                     }
-
-                    // Success: Display the generated image
-                    const imageUrl = `data:image/png;base64,${result.base64Data}`;
-                    imageDisplay.innerHTML = `<img src="${imageUrl}" alt="Generated Jersey Mockup" class="w-full h-auto object-contain rounded-xl shadow-2xl">`;
-                    showMessage("Success! Your custom jersey mockup is ready.", false);
-                    setLoading(false);
-                    return; // Exit function on success
 
                 } catch (error) {
                     console.error(`Generation attempt ${i + 1} failed:`, error);
-                    const errorMessage = error.message.includes('HTTP error') || error.message.includes('Failed to fetch') 
-                        ? "Connection Error: The server could not be reached or timed out. This often points to a configuration or CORS issue."
+                    const errorMessage = error.message.includes('HTTP error') 
+                        ? "API Error: Failed to communicate with the image generation server."
                         : `Generation Error: ${error.message}`;
 
                     if (i < MAX_RETRIES - 1) {
                         showMessage(`${errorMessage} Retrying in ${RETRY_DELAY_MS / 1000}s...`, true);
                         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
                     } else {
-                        showMessage(`Final attempt failed: ${errorMessage}. Please check your Google Apps Script deployment logs and API key.`, true);
+                        showMessage(`Final attempt failed: ${errorMessage}. Please check your prompt and try again.`, true);
                         setLoading(false);
                     }
                 }
