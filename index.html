@@ -223,6 +223,7 @@
                     // but we ensure the headers are minimal.
                     const response = await fetch(APPS_SCRIPT_URL, {
                         method: 'POST',
+                        mode: 'cors', // Explicitly setting CORS mode for better compatibility
                         headers: {
                             'Content-Type': 'application/json',
                         },
