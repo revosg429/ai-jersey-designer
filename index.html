@@ -271,7 +271,8 @@
                 
                 const prompt = constructPrompt(hasRealLogo);
 
-                // --- UPDATED NETLIFY FUNCTION ENDPOINT ---
+                // --- CORRECT NETLIFY FUNCTION ENDPOINT ---
+                // The URL is relative, pointing to the Netlify Function handler
                 const proxyUrl = '/.netlify/functions/generate-jersey'; 
 
                 const payload = {
