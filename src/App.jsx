@@ -14,7 +14,7 @@ const API_KEY = "";
 
 // === IMPORTANT: PASTE YOUR DEPLOYED APPS SCRIPT URL HERE ===
 // This is the public URL you copied from Step 2 of the deployment guide.
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyaQpTsHvKYRbQq3XAANW9st55HJ2AyBbWftvPWQF6xCtyET1sBqUqIH0Uqm7mM7acu/exec; 
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyaQpTsHvKYRbQq3XAANW9st55HJ2AyBbWftvPWQF6xCtyET1sBqUqIH0Uqm7mM7acu/exec'; 
 
 // **FIX:** Transparent 1x1 PNG Base64 Data. This forces the use of the better multimodal model.
 const BLANK_LOGO_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
