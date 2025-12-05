@@ -1,6 +1,0 @@
-[build]
-  # We are setting the command to an empty instruction since we are serving static files
-  command = ""
-  
-  # Serve files directly from the root of the repository
-  publish = "/"
