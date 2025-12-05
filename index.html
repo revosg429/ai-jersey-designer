@@ -7,10 +7,10 @@
     <!-- Load Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- FIX: Load stable React and ReactDOM for robust initialization -->
-    <!-- We are loading the classic, stable versions to avoid the ReactDOM.createRoot dependency issue -->
-    <script src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
+    <!-- FIX 2: Reverting to React 18 CDNs and modern rendering to ensure compatibility -->
+    <!-- This structure is the most standard for modern React CDN setups -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     
     <!-- Load Babel for JSX compilation in the browser -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -532,8 +532,8 @@
             );
         };
 
-        // FIX: Use the legacy ReactDOM.render method for robust CDN compatibility
-        ReactDOM.render(<App />, document.getElementById('root'));
+        // NEW FIX: Use the modern React 18 createRoot method
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
 </html>
