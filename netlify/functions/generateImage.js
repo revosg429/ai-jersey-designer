@@ -1,7 +1,8 @@
-// This function handles the request to the Imagen API for image generation.
+// This function handles the request to the Gemini API for image generation (multi-modal: text + image).
 
 const API_KEY = process.env.GEMINI_API_KEY; // Ensure this is correctly named in Netlify env vars
-const MODEL_NAME = 'imagen-4.0-generate-001'; // Standard model for text-to-image
+// IMPORTANT: Switched model back to the multi-modal version to handle logo input
+const MODEL_NAME = 'gemini-2.5-flash-image-preview'; 
 
 // Define headers for CORS access
 const CORS_HEADERS = {
@@ -37,7 +38,8 @@ exports.handler = async (event) => {
     }
 
     try {
-        const { prompt } = JSON.parse(event.body);
+        // Now expecting prompt and logoData, like the frontend sends
+        const { prompt, logoData } = JSON.parse(event.body);
 
         if (!prompt) {
             return { 
@@ -71,15 +73,25 @@ exports.handler = async (event) => {
             }
         };
 
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:predict?key=${API_KEY}`;
+        // Switched to the generateContent endpoint for multi-modal
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
         
-        // Payload structure for imagen-4.0-generate-001
+        // Payload structure for gemini-2.5-flash-image-preview (multi-modal)
         const payload = {
-            instances: [{ prompt: prompt }],
-            parameters: {
-                sampleCount: 1,
-                // Optionally add other parameters like aspect ratio
-                aspectRatio: "1:1"
+            contents: [{
+                parts: [
+                    { text: prompt },
+                    {
+                        inlineData: {
+                            mimeType: logoData.mimeType,
+                            data: logoData.data // This is the base64 data for the logo
+                        }
+                    }
+                ]
+            }],
+            generationConfig: {
+                // Requesting both TEXT and IMAGE modalities in the response
+                responseModalities: ['TEXT', 'IMAGE'] 
             }
         };
 
@@ -89,10 +101,10 @@ exports.handler = async (event) => {
             body: JSON.stringify(payload)
         });
 
-        const prediction = response.predictions?.[0];
+        // The image data extraction path for generateContent is different from :predict
+        const base64Data = response?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
 
-        if (prediction && prediction.bytesBase64Encoded) {
-            const base64Data = prediction.bytesBase64Encoded;
+        if (base64Data) {
             const imageUrl = `data:image/png;base64,${base64Data}`;
 
             return {
@@ -101,7 +113,7 @@ exports.handler = async (event) => {
                 body: JSON.stringify({ imageUrl: imageUrl })
             };
         } else {
-            // === NEW IMPROVED ERROR HANDLING ===
+            // === NEW IMPROVED ERROR HANDLING (ADJUSTED FOR GENERATECONTENT) ===
             // Check for safety filter issues, which is a common cause of missing image data
             const safetyRating = response.candidates?.[0]?.safetyRatings?.map(r => 
                 `${r.category.split('_').pop()}: ${r.probability}`
